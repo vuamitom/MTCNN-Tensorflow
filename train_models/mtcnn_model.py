@@ -176,6 +176,7 @@ def _activation_summary(x):
 #label:batch
 def P_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True):
     #define common param
+    print('P_Net')
     with slim.arg_scope([slim.conv2d],
                         activation_fn=prelu,
                         weights_initializer=slim.xavier_initializer(),
@@ -242,11 +243,15 @@ def P_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
         else:
             #when test,batch_size = 1
             cls_pro_test = tf.squeeze(conv4_1, axis=0)
+            print('class prob shape', cls_pro_test.get_shape())
             bbox_pred_test = tf.squeeze(bbox_pred,axis=0)
+            print('bbox shape', bbox_pred_test.get_shape())
             landmark_pred_test = tf.squeeze(landmark_pred,axis=0)
+            print('landmark pred shape', landmark_pred_test.get_shape())
             return cls_pro_test,bbox_pred_test,landmark_pred_test
         
 def R_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True):
+    print('R_Net')
     with slim.arg_scope([slim.conv2d],
                         activation_fn = prelu,
                         weights_initializer=slim.xavier_initializer(),
@@ -267,16 +272,16 @@ def R_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
         fc_flatten = slim.flatten(net)
         print(fc_flatten.get_shape())
         fc1 = slim.fully_connected(fc_flatten, num_outputs=128,scope="fc1")
-        print(fc1.get_shape())
+        print('fc1',fc1.get_shape())
         #batch*2
         cls_prob = slim.fully_connected(fc1,num_outputs=2,scope="cls_fc",activation_fn=tf.nn.softmax)
-        print(cls_prob.get_shape())
+        print('cls_prob', cls_prob.get_shape())
         #batch*4
         bbox_pred = slim.fully_connected(fc1,num_outputs=4,scope="bbox_fc",activation_fn=None)
-        print(bbox_pred.get_shape())
+        print('bbox_fc', bbox_pred.get_shape())
         #batch*10
         landmark_pred = slim.fully_connected(fc1,num_outputs=10,scope="landmark_fc",activation_fn=None)
-        print(landmark_pred.get_shape())
+        print('landmark_fc', landmark_pred.get_shape())
         #train
         if training:
             cls_loss = cls_ohem(cls_prob,label)
@@ -289,6 +294,7 @@ def R_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
             return cls_prob,bbox_pred,landmark_pred
     
 def O_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True):
+    print ('O_Net')
     with slim.arg_scope([slim.conv2d],
                         activation_fn = prelu,
                         weights_initializer=slim.xavier_initializer(),
@@ -316,13 +322,13 @@ def O_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
         print(fc1.get_shape())
         #batch*2
         cls_prob = slim.fully_connected(fc1,num_outputs=2,scope="cls_fc",activation_fn=tf.nn.softmax)
-        print(cls_prob.get_shape())
+        print('cls_fc', cls_prob.get_shape())
         #batch*4
         bbox_pred = slim.fully_connected(fc1,num_outputs=4,scope="bbox_fc",activation_fn=None)
-        print(bbox_pred.get_shape())
+        print('bbox_fc', bbox_pred.get_shape())
         #batch*10
         landmark_pred = slim.fully_connected(fc1,num_outputs=10,scope="landmark_fc",activation_fn=None)
-        print(landmark_pred.get_shape())
+        print('landmark_fc', landmark_pred.get_shape())
         #train
         if training:
             cls_loss = cls_ohem(cls_prob,label)

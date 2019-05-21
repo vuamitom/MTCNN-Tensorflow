@@ -16,8 +16,8 @@ stride = 2
 slide_window = False
 shuffle = False
 detectors = [None, None, None]
-prefix = ['../data/MTCNN_model/PNet_No_landmark/PNet', '../data/MTCNN_model/RNet_landmark/RNet', '../data/MTCNN_model/ONet_landmark/ONet']
-epoch = [30, 14, 16]
+prefix = ['../data/MTCNN_model/PNet_landmark/PNet', '../data/MTCNN_model/RNet_landmark/RNet', '../data/MTCNN_model/ONet_landmark/ONet']
+epoch = [18, 14, 16]
 batch_size = [2048, 64, 16]
 model_path = ['%s-%s' % (x, y) for x, y in zip(prefix, epoch)]
 # load pnet model
@@ -44,7 +44,8 @@ gt_imdb = []
 #imdb_ = dict()"
 #imdb_['image'] = im_path
 #imdb_['label'] = 5
-path = "../../DATA/test/lfpw_testImage"
+# path = "../../DATA/test/lfpw_testImage"
+path = '/home/tamvm/Pictures/test1'
 for item in os.listdir(path):
     gt_imdb.append(os.path.join(path,item))
 test_data = TestLoader(gt_imdb)

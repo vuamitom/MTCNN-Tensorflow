@@ -71,3 +71,70 @@ class Detector(object):
             landmark_pred_list.append(landmark_pred[:real_size])
             #num_of_data*2,num_of_data*4,num_of_data*10
         return np.concatenate(cls_prob_list, axis=0), np.concatenate(bbox_pred_list, axis=0), np.concatenate(landmark_pred_list, axis=0)
+
+
+class TFLiteDetector(object):
+    #net_factory:rnet or onet
+    #datasize:24 or 48
+    def __init__(self, data_size, batch_size, model_path):
+
+        self.interpreter = tf.lite.Interpreter(model_path=model_path)
+        self.interpreter.allocate_tensors()
+
+        self.data_size = data_size
+        self.batch_size = batch_size
+    #rnet and onet minibatch(test)
+    def predict(self, databatch):
+        # access data
+        # databatch: N x 3 x data_size x data_size
+        scores = []
+        batch_size = self.batch_size
+
+        minibatch = []
+        cur = 0
+        #num of all_data
+        n = databatch.shape[0]
+        while cur < n:
+            #split mini-batch
+            minibatch.append(databatch[cur:min(cur + batch_size, n), :, :, :])
+            cur += batch_size
+        #every batch prediction result
+        cls_prob_list = []
+        bbox_pred_list = []
+        landmark_pred_list = []
+        input_details = self.interpreter.get_input_details()
+        output_details = self.interpreter.get_output_details()
+        for idx, data in enumerate(minibatch):
+            m = data.shape[0]
+            real_size = self.batch_size
+            #the last batch 
+            if m < batch_size:
+                keep_inds = np.arange(m)
+                #gap (difference)
+                gap = self.batch_size - m
+                while gap >= len(keep_inds):
+                    gap -= len(keep_inds)
+                    keep_inds = np.concatenate((keep_inds, keep_inds))
+                if gap != 0:
+                    keep_inds = np.concatenate((keep_inds, keep_inds[:gap]))
+                data = data[keep_inds]
+                real_size = m
+            #cls_prob batch*2
+            #bbox_pred batch*4
+            self.interpreter.set_tensor(input_details[0]['index'], data)
+            self.interpreter.invoke()
+            output_dict = {
+                'cls_prob': self.interpreter.get_tensor(output_details[0]['index']),
+                'bbox_pred': self.interpreter.get_tensor(output_details[1]['index']),
+                'landmark_pred': self.interpreter.get_tensor(output_details[2]['index'])                
+            }
+            #num_batch * batch_size *2
+            cls_prob_list.append(output_dict['cls_prob'][:real_size])
+            #num_batch * batch_size *4
+            bbox_pred_list.append(output_dict['bbox_pred'][:real_size])
+            #num_batch * batch_size*10
+            landmark_pred_list.append(output_dict['landmark_pred'][:real_size])
+            #num_of_data*2,num_of_data*4,num_of_data*10
+        return np.concatenate(cls_prob_list, axis=0), np.concatenate(bbox_pred_list, axis=0), np.concatenate(landmark_pred_list, axis=0)
+
+        

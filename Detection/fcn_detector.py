@@ -1,4 +1,4 @@
-
+import numpy as np
 import tensorflow as tf
 import sys
 sys.path.append("../")
@@ -10,6 +10,8 @@ class FcnDetector(object):
     #model_path: where the params'file is
     def __init__(self, net_factory, model_path):
         #create a graph
+        self.is_quantized = False 
+
         graph = tf.Graph()
         with graph.as_default():
             #define tensor and op in graph(-1,1)
@@ -42,3 +44,31 @@ class FcnDetector(object):
                                                            feed_dict={self.image_op: databatch, self.width_op: width,
                                                                       self.height_op: height})
         return cls_prob, bbox_pred
+
+class TFLiteFcnDetector(object):
+    def __init__(self, model_path):
+        #create a graph
+        self.is_quantized = True
+        self.interpreters = {}
+        sizes = [14, 18, 23, 29, 37, 47, 59, 75, 95, 120]
+        for s in sizes:
+            ip = tf.lite.Interpreter(model_path=(model_path + '_' + str(s) + '.tflite'))
+            ip.allocate_tensors()
+            self.interpreters[s] = ip
+            
+    def predict(self, databatch):
+        height, width, _ = databatch.shape
+        # print(height, width)
+        net = self.interpreters[height]
+        input_details = net.get_input_details()
+        output_details = net.get_output_details()
+        # print('databatch ', databatch)
+        ds = databatch.reshape(1, *databatch.shape)
+        net.set_tensor(input_details[0]['index'], ds.astype(np.float32))
+        net.invoke()
+
+        output_dict = {
+            'cls_prob': net.get_tensor(output_details[0]['index']),
+            'bbox_pred': net.get_tensor(output_details[1]['index'])           
+        }
+        return output_dict['cls_prob'], output_dict['bbox_pred']

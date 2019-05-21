@@ -16,7 +16,7 @@ def py_nms(dets, thresh, mode="Union"):
 
     areas = (x2 - x1 + 1) * (y2 - y1 + 1)
     order = scores.argsort()[::-1]
-
+    # print('order shape = ', order.shape)
     keep = []
     while order.size > 0:
         i = order[0]
