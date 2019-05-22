@@ -225,14 +225,16 @@ class MtcnnDetector(object):
             boxes = self.generate_bbox(cls_cls_map[:, :, 1], reg, current_scale, self.thresh[0])
             # scale_factor is 0.79 in default
             # print('gen boxes size = ', boxes.shape)
+            if boxes.size > 0:
+                print('map size ', cls_cls_map.shape, 'box size = ', boxes.shape , ' for size ', current_height)
+                print('scores = ', boxes[:, 4])
             current_scale *= self.scale_factor
             im_resized = self.processed_image(im, current_scale, round if self.pnet_detector.is_quantized else int)
             current_height, current_width, _ = im_resized.shape
 
             if boxes.size == 0:
                 continue
-            else:
-                print('max box scores = ', np.max(cls_cls_map[:, :, 1]))
+                
             # get the index from non-maximum s
             keep = py_nms(boxes[:, :5], 0.5, 'Union')
             boxes = boxes[keep]
@@ -242,6 +244,7 @@ class MtcnnDetector(object):
         if len(all_boxes) == 0:
             return None, None, None
         print ('all_boxes len = ', len(all_boxes))
+
         for boxes in all_boxes:
             print('len box = ', boxes.shape)
         all_boxes = np.vstack(all_boxes)

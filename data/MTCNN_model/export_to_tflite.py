@@ -31,9 +31,12 @@ def export_model(path, data_size, net_factory, output_name, quantized=False):
             converter = tf.lite.TFLiteConverter.from_session(sess, inputs, outputs)
             if quantized:
                 converter.inference_type = tf.uint8
-                converter.allow_custom_ops = True
+                converter.allow_custom_ops = False
                 converter.quantized_input_stats = {}
-                converter.quantized_input_stats[inputs[0]] = (128, 128) # (mean, std)
+                converter.quantized_input_stats['input_image'] = (127.5, 128) # (mean, std)
+                # converter.default_ranges_min = 0
+                # converter.default_ranges_max = 128
+                converter.post_training_quantize = True
             tflite_model = converter.convert()
             op = os.path.join(os.path.dirname(path), output_name + '.tflite')
             with open(op, 'wb') as f:
@@ -46,11 +49,12 @@ data_sizes = [24, 48]
 net_factories = [R_Net, O_Net]
 model_paths = ['%s-%s' % (x, y) for x, y in zip(prefix, epoch)]
 outputs = ['RNet', 'ONet']
+expect_input_size = 80
+quantize_model = False
 # get necessary pnet size 
-def gen_pnet_sizes():
-    init_bitmap_size = 240
+def gen_pnet_sizes(init_bitmap_size):
     pnet_size = 12
-    scale_factor = 0.79
+    scale_factor = 0.5
     min_face_size = 24
     current_scale = pnet_size / float(min_face_size)
     all_sizes = []
@@ -63,7 +67,7 @@ def gen_pnet_sizes():
         
     return all_sizes
 
-for s in gen_pnet_sizes():
+for s in gen_pnet_sizes(expect_input_size):
     data_sizes.append(s)
     net_factories.append(P_Net)
     model_paths.append('PNet_landmark/PNet-18')
@@ -71,4 +75,4 @@ for s in gen_pnet_sizes():
 
 print(model_paths)
 for idx in range(0, len(model_paths)):
-    export_model(model_paths[idx], data_sizes[idx], net_factories[idx], outputs[idx])
+    export_model(model_paths[idx], data_sizes[idx], net_factories[idx], outputs[idx], quantize_model)

@@ -46,11 +46,15 @@ class FcnDetector(object):
         return cls_prob, bbox_pred
 
 class TFLiteFcnDetector(object):
-    def __init__(self, model_path):
+    def __init__(self, model_path, input_img_size):
         #create a graph
         self.is_quantized = True
         self.interpreters = {}
-        sizes = [14, 18, 23, 29, 37, 47, 59, 75, 95, 120]
+        sizes = None
+        if input_img_size == 240:
+            sizes = [14, 18, 23, 29, 37, 47, 59, 75, 95, 120]
+        elif input_img_size == 120:
+            sizes = [15, 18, 23, 30, 37, 47, 60]
         for s in sizes:
             ip = tf.lite.Interpreter(model_path=(model_path + '_' + str(s) + '.tflite'))
             ip.allocate_tensors()

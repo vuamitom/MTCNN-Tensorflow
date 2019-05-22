@@ -11,22 +11,22 @@ import numpy as np
 def load_image_into_numpy_array(image):
     (im_width, im_height) = image.size
     return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
-use_tflite = True
+use_tflite = False
 test_mode = "onet"
 thresh = [0.9, 0.6, 0.7]
 min_face_size = 24
 stride = 2
 slide_window = False
 shuffle = False
-#vis = True
+input_img_size = 80
 detectors = [None, None, None]
-
+scale_factor = 0.5
 prefix = ['../data/MTCNN_model/PNet_landmark/PNet', '../data/MTCNN_model/RNet_landmark/RNet', '../data/MTCNN_model/ONet_landmark/ONet']
 epoch = [18, 14, 16]
 model_path = ['%s-%s' % (x, y) for x, y in zip(prefix, epoch)]
 
 if use_tflite:
-    PNet = TFLiteFcnDetector('/home/tamvm/AndroidStudioProjects/MLKitDemo/app/src/main/assets/MTCNN/PNet')
+    PNet = TFLiteFcnDetector('/home/tamvm/AndroidStudioProjects/MLKitDemo/app/src/main/assets/MTCNN/' + str(input_img_size) + '/PNet', input_img_size)
     detectors[0] = PNet
     RNet = TFLiteDetector(24, 1, '/home/tamvm/AndroidStudioProjects/MLKitDemo/app/src/main/assets/MTCNN/RNet.tflite')
     detectors[1] = RNet
@@ -42,12 +42,13 @@ else:
 
 image_path = "/home/tamvm/Pictures/test1/test_face_detect_2.jpeg"
 mtcnn_detector = MtcnnDetector(detectors=detectors, min_face_size=min_face_size,
+                                scale_factor=scale_factor,
                                stride=stride, threshold=thresh, slide_window=slide_window)
 # fps = video_capture.get(cv2.CAP_PROP_FPS)
 t1 = cv2.getTickCount()
 
 image = cv2.imread(image_path)
-image = cv2.resize(image, (240, 240))
+image = cv2.resize(image, (input_img_size, input_img_size))
 # frame = load_image_into_numpy_array(image)
 frame = image
 boxes_c, landmarks = mtcnn_detector.detect(frame)
