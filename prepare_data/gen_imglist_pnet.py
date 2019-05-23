@@ -2,7 +2,7 @@ import numpy as np
 import numpy.random as npr
 import os
 
-data_dir = '../../DATA'
+data_dir = '/home/tamvm/Projects/MTCNN-Tensorflow/data/'
 #anno_file = os.path.join(data_dir, "anno.txt")
 
 size = 12

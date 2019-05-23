@@ -11,10 +11,18 @@ from prepare_data.BBox_utils import getDataFromTxt, BBox
 from prepare_data.Landmark_utils import rotate, flip
 from prepare_data.utils import IoU
 
+no_landmarks = 68
+landmark_dim = 2
+no_landmark_vals = no_landmarks * landmark_dim
+dstdir = "/home/tamvm/Projects/MTCNN-Tensorflow/data/12/train_PNet_landmark_aug"
+OUTPUT = '/home/tamvm/Projects/MTCNN-Tensorflow/data/12'
+# data_path = '/home/tamvm/Projects/MTCNN-Tensorflow/data'
+if not exists(OUTPUT):
+    os.mkdir(OUTPUT)
+if not exists(dstdir):
+    os.mkdir(dstdir)
 
-
-
-def GenerateData(ftxt,data_path,net,argument=False):
+def GenerateData(ftxt, net, argument=False):
     '''
 
     :param ftxt: name/path of the text file that contains image path,
@@ -39,7 +47,7 @@ def GenerateData(ftxt,data_path,net,argument=False):
     f = open(join(OUTPUT,"landmark_%s_aug.txt" %(size)),'w')
     #dstdir = "train_landmark_few"
     # get image path , bounding box, and landmarks from file 'ftxt'
-    data = getDataFromTxt(ftxt,data_path=data_path)
+    data = getDataFromTxt(ftxt, None, True, no_landmarks)
     idx = 0
     #image_path bbox landmark(5*2)
     for (imgPath, bbox, landmarkGt) in data:
@@ -48,16 +56,18 @@ def GenerateData(ftxt,data_path,net,argument=False):
         F_landmarks = []
         #print(imgPath)
         img = cv2.imread(imgPath)
-
-        assert(img is not None)
-        img_h,img_w,img_c = img.shape
-        gt_box = np.array([bbox.left,bbox.top,bbox.right,bbox.bottom])
+        # assert(img is not None)
+        img_h, img_w, img_c = img.shape
+        gt_box = np.array([bbox.left, bbox.top, bbox.right, bbox.bottom])
         #get sub-image from bbox
-        f_face = img[bbox.top:bbox.bottom+1,bbox.left:bbox.right+1]
+        f_face = img[bbox.top:bbox.bottom+1, bbox.left:bbox.right+1]
         # resize the gt image to specified size
+        # print ('resize to ', size)
+        
+        # print ('f_face ', f_face.shape, bbox.top, bbox.bottom, bbox.left, bbox.right)
         f_face = cv2.resize(f_face,(size,size))
         #initialize the landmark
-        landmark = np.zeros((5, 2))
+        landmark = np.zeros((no_landmarks, landmark_dim))
 
         #normalize land mark by dividing the width and height of the ground truth bounding box
         # landmakrGt is a list of tuples
@@ -68,8 +78,8 @@ def GenerateData(ftxt,data_path,net,argument=False):
             landmark[index] = rv
         
         F_imgs.append(f_face)
-        F_landmarks.append(landmark.reshape(10))
-        landmark = np.zeros((5, 2))        
+        F_landmarks.append(landmark.reshape(no_landmark_vals))
+        landmark = np.zeros((no_landmarks, landmark_dim))        
         if argument:
             idx = idx + 1
             if idx % 100 == 0:
@@ -95,7 +105,6 @@ def GenerateData(ftxt,data_path,net,argument=False):
                     continue
                 crop_box = np.array([nx1,ny1,nx2,ny2])
 
-
                 cropped_im = img[ny1:ny2+1,nx1:nx2+1,:]
                 resized_im = cv2.resize(cropped_im, (size, size))
                 #cal iou
@@ -106,8 +115,8 @@ def GenerateData(ftxt,data_path,net,argument=False):
                     for index, one in enumerate(landmarkGt):
                         rv = ((one[0]-nx1)/bbox_size, (one[1]-ny1)/bbox_size)
                         landmark[index] = rv
-                    F_landmarks.append(landmark.reshape(10))
-                    landmark = np.zeros((5, 2))
+                    F_landmarks.append(landmark.reshape(no_landmark_vals))
+                    landmark = np.zeros((no_landmarks, landmark_dim))
                     landmark_ = F_landmarks[-1].reshape(-1,2)
                     bbox = BBox([nx1,ny1,nx2,ny2])                    
 
@@ -117,7 +126,7 @@ def GenerateData(ftxt,data_path,net,argument=False):
                         face_flipped = cv2.resize(face_flipped, (size, size))
                         #c*h*w
                         F_imgs.append(face_flipped)
-                        F_landmarks.append(landmark_flipped.reshape(10))
+                        F_landmarks.append(landmark_flipped.reshape(no_landmark_vals))
                     #rotate
                     if random.choice([0,1]) > 0:
                         face_rotated_by_alpha, landmark_rotated = rotate(img, bbox, \
@@ -126,13 +135,13 @@ def GenerateData(ftxt,data_path,net,argument=False):
                         landmark_rotated = bbox.projectLandmark(landmark_rotated)
                         face_rotated_by_alpha = cv2.resize(face_rotated_by_alpha, (size, size))
                         F_imgs.append(face_rotated_by_alpha)
-                        F_landmarks.append(landmark_rotated.reshape(10))
+                        F_landmarks.append(landmark_rotated.reshape(no_landmark_vals))
                 
                         #flip
                         face_flipped, landmark_flipped = flip(face_rotated_by_alpha, landmark_rotated)
                         face_flipped = cv2.resize(face_flipped, (size, size))
                         F_imgs.append(face_flipped)
-                        F_landmarks.append(landmark_flipped.reshape(10))                
+                        F_landmarks.append(landmark_flipped.reshape(no_landmark_vals))                
                     
                     #anti-clockwise rotation
                     if random.choice([0,1]) > 0: 
@@ -141,12 +150,12 @@ def GenerateData(ftxt,data_path,net,argument=False):
                         landmark_rotated = bbox.projectLandmark(landmark_rotated)
                         face_rotated_by_alpha = cv2.resize(face_rotated_by_alpha, (size, size))
                         F_imgs.append(face_rotated_by_alpha)
-                        F_landmarks.append(landmark_rotated.reshape(10))
+                        F_landmarks.append(landmark_rotated.reshape(no_landmark_vals))
                 
                         face_flipped, landmark_flipped = flip(face_rotated_by_alpha, landmark_rotated)
                         face_flipped = cv2.resize(face_flipped, (size, size))
                         F_imgs.append(face_flipped)
-                        F_landmarks.append(landmark_flipped.reshape(10)) 
+                        F_landmarks.append(landmark_flipped.reshape(no_landmark_vals)) 
                     
             F_imgs, F_landmarks = np.asarray(F_imgs), np.asarray(F_landmarks)
             #print F_imgs.shape
@@ -161,33 +170,23 @@ def GenerateData(ftxt,data_path,net,argument=False):
 
                 if np.sum(np.where(F_landmarks[i] >= 1, 1, 0)) > 0:
                     continue
-
-                cv2.imwrite(join(dstdir,"%d.jpg" %(image_id)), F_imgs[i])
+                img_file_path = join(dstdir,"%d.jpg" %(image_id))
+                cv2.imwrite(img_file_path, F_imgs[i])
                 landmarks = map(str,list(F_landmarks[i]))
-                f.write(join(dstdir,"%d.jpg" %(image_id))+" -2 "+" ".join(landmarks)+"\n")
+                f.write(img_file_path + " -2 " + " ".join(landmarks)+"\n")
                 image_id = image_id + 1
             
-    #print F_imgs.shape
-    #print F_landmarks.shape
-    #F_imgs = processImage(F_imgs)
-    #shuffle_in_unison_scary(F_imgs, F_landmarks)
     
     f.close()
     return F_imgs,F_landmarks
 
 if __name__ == '__main__':
-    dstdir = "../../DATA/12/train_PNet_landmark_aug"
-    OUTPUT = '../../DATA/12'
-    data_path = '../../DATA'
-    if not exists(OUTPUT):
-        os.mkdir(OUTPUT)
-    if not exists(dstdir):
-        os.mkdir(dstdir)
-    assert (exists(dstdir) and exists(OUTPUT))
+    
+    # assert (exists(dstdir) and exists(OUTPUT))
     # train data
     net = "PNet"
     #the file contains the names of all the landmark training data
-    train_txt = "trainImageList.txt"
-    imgs,landmarks = GenerateData(train_txt,data_path,net,argument=True )
+    train_txt = "/home/tamvm/Projects/MTCNN-Tensorflow/prepare_data/trainImageLandmarkList.txt"
+    imgs, landmarks = GenerateData(train_txt, net, argument=True)
     
    

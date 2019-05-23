@@ -50,7 +50,7 @@ net_factories = [R_Net, O_Net]
 model_paths = ['%s-%s' % (x, y) for x, y in zip(prefix, epoch)]
 outputs = ['RNet', 'ONet']
 expect_input_size = 80
-quantize_model = False
+quantize_model = True
 # get necessary pnet size 
 def gen_pnet_sizes(init_bitmap_size):
     pnet_size = 12

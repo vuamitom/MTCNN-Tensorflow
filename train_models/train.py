@@ -15,7 +15,10 @@ from prepare_data.read_tfrecord_v2 import read_multi_tfrecords,read_single_tfrec
 
 import random
 import cv2
-def train_model(base_lr, loss, data_num):
+
+no_landmarks = 68
+
+def train_model(base_lr, loss, data_num, quantize=True):
     """
     train model
     :param base_lr: base learning rate
@@ -33,6 +36,10 @@ def train_model(base_lr, loss, data_num):
     lr_values = [base_lr * (lr_factor ** x) for x in range(0, len(config.LR_EPOCH) + 1)]
     #control learning rate
     lr_op = tf.train.piecewise_constant(global_step, boundaries, lr_values)
+    # quantize graph 
+    if quantize:
+        tf.contrib.quantize.create_training_graph(input_graph=tf.get_default_graph(), quant_delay=500000)
+
     optimizer = tf.train.MomentumOptimizer(lr_op, 0.9)
     train_op = optimizer.minimize(loss, global_step)
     return train_op, lr_op
@@ -90,7 +97,7 @@ def image_color_distort(inputs):
     return inputs
 
 def train(net_factory, prefix, end_epoch, base_dir,
-          display=200, base_lr=0.01):
+          display=200, base_lr=0.01, quantize=True):
     """
     train PNet/RNet/ONet
     :param net_factory:
@@ -116,8 +123,8 @@ def train(net_factory, prefix, end_epoch, base_dir,
     if net == 'PNet':
         #dataset_dir = os.path.join(base_dir,'train_%s_ALL.tfrecord_shuffle' % net)
         dataset_dir = os.path.join(base_dir,'train_%s_landmark.tfrecord_shuffle' % net)
-        print('dataset dir is:',dataset_dir)
-        image_batch, label_batch, bbox_batch,landmark_batch = read_single_tfrecord(dataset_dir, config.BATCH_SIZE, net)
+        print('dataset dir is:',dataset_dir , 'batch_size = ', config.BATCH_SIZE)
+        image_batch, label_batch, bbox_batch, landmark_batch = read_single_tfrecord(dataset_dir, config.BATCH_SIZE, net, no_landmarks)
         
     #RNet use 3 tfrecords to get data    
     else:
@@ -155,7 +162,7 @@ def train(net_factory, prefix, end_epoch, base_dir,
     input_image = tf.placeholder(tf.float32, shape=[config.BATCH_SIZE, image_size, image_size, 3], name='input_image')
     label = tf.placeholder(tf.float32, shape=[config.BATCH_SIZE], name='label')
     bbox_target = tf.placeholder(tf.float32, shape=[config.BATCH_SIZE, 4], name='bbox_target')
-    landmark_target = tf.placeholder(tf.float32,shape=[config.BATCH_SIZE,10],name='landmark_target')
+    landmark_target = tf.placeholder(tf.float32,shape=[config.BATCH_SIZE, no_landmarks *2],name='landmark_target')
     #get loss and accuracy
     input_image = image_color_distort(input_image)
     cls_loss_op,bbox_loss_op,landmark_loss_op,L2_loss_op,accuracy_op = net_factory(input_image, label, bbox_target,landmark_target,training=True)
@@ -163,7 +170,9 @@ def train(net_factory, prefix, end_epoch, base_dir,
     total_loss_op  = radio_cls_loss*cls_loss_op + radio_bbox_loss*bbox_loss_op + radio_landmark_loss*landmark_loss_op + L2_loss_op
     train_op, lr_op = train_model(base_lr,
                                   total_loss_op,
-                                  num)
+                                  num, quantize)
+    
+
     # init
     init = tf.global_variables_initializer()
     sess = tf.Session()
@@ -196,15 +205,14 @@ def train(net_factory, prefix, end_epoch, base_dir,
     epoch = 0
     sess.graph.finalize()
     try:
-
-
-
         for step in range(MAX_STEP):
             i = i + 1
             if coord.should_stop():
                 break
+            # print ('train step = ', step, image_batch.shape, bbox_batch.shape, landmark_batch.shape)
             image_batch_array, label_batch_array, bbox_batch_array,landmark_batch_array = sess.run([image_batch, label_batch, bbox_batch,landmark_batch])
             #random flip
+            # print('after batch array')
             image_batch_array,landmark_batch_array = random_flip_images(image_batch_array,label_batch_array,landmark_batch_array)
             '''
             print('im here')
@@ -217,11 +225,12 @@ def train(net_factory, prefix, end_epoch, base_dir,
             print(landmark_batch_array[0])
             '''
 
-
+            print('->>>>> 1')
             _,_,summary = sess.run([train_op, lr_op ,summary_op], feed_dict={input_image: image_batch_array, label: label_batch_array, bbox_target: bbox_batch_array,landmark_target:landmark_batch_array})
 
             if (step+1) % display == 0:
                 #acc = accuracy(cls_pred, labels_batch)
+                print('->>>>> 2') 
                 cls_loss, bbox_loss,landmark_loss,L2_loss,lr,acc = sess.run([cls_loss_op, bbox_loss_op,landmark_loss_op,L2_loss_op,lr_op,accuracy_op],
                                                              feed_dict={input_image: image_batch_array, label: label_batch_array, bbox_target: bbox_batch_array, landmark_target: landmark_batch_array})
 

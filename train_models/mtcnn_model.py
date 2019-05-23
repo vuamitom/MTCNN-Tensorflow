@@ -5,6 +5,7 @@ from tensorflow.contrib.tensorboard.plugins import projector
 import numpy as np
 num_keep_radio = 0.7
 #define prelu
+no_landmarks = 68
 def prelu(inputs):
     alphas = tf.get_variable("alphas", shape=inputs.get_shape()[-1], dtype=tf.float32, initializer=tf.constant_initializer(0.25))
     pos = tf.nn.relu(inputs)
@@ -29,6 +30,7 @@ def cls_ohem(cls_prob, label):
     label_filter_invalid = tf.where(tf.less(label,0), zeros, label)
     num_cls_prob = tf.size(cls_prob)
     cls_prob_reshape = tf.reshape(cls_prob,[num_cls_prob,-1])
+    _activation_summary(cls_prob_reshape)
     label_int = tf.cast(label_filter_invalid,tf.int32)
     # get the number of rows of class_prob
     num_row = tf.to_int32(cls_prob.get_shape()[0])
@@ -210,7 +212,7 @@ def P_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
         _activation_summary(bbox_pred)
         print (bbox_pred.get_shape())
         #batch*H*W*10
-        landmark_pred = slim.conv2d(net,num_outputs=10,kernel_size=[1,1],stride=1,scope='conv4_3',activation_fn=None)
+        landmark_pred = slim.conv2d(net,num_outputs=(no_landmarks *2),kernel_size=[1,1],stride=1,scope='conv4_3',activation_fn=None)
         _activation_summary(landmark_pred)
         print (landmark_pred.get_shape())
 
@@ -233,7 +235,7 @@ def P_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
             bbox_pred = tf.squeeze(bbox_pred,[1,2],name='bbox_pred')
             bbox_loss = bbox_ohem(bbox_pred,bbox_target,label)
             #batch*10
-            landmark_pred = tf.squeeze(landmark_pred,[1,2],name="landmark_pred")
+            landmark_pred = tf.squeeze(landmark_pred, [1, 2], name="landmark_pred")
             landmark_loss = landmark_ohem(landmark_pred,landmark_target,label)
 
             accuracy = cal_accuracy(cls_prob,label)

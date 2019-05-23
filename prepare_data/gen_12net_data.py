@@ -6,12 +6,14 @@ import numpy.random as npr
 
 from prepare_data.utils import IoU
 
-anno_file = "wider_face_train.txt"
-im_dir = "../../DATA/WIDER_train/images"
-pos_save_dir = "../../DATA/12/positive"
-part_save_dir = "../../DATA/12/part"
-neg_save_dir = '../../DATA/12/negative'
-save_dir = "../../DATA/12"
+# anno_file = "wider_face_train.txt"
+anno_file = '/home/tamvm/Projects/MTCNN-Tensorflow/prepare_data/wider_face_train.txt'
+im_dir = '/home/tamvm/Projects/tensorflow-models/research/object_detection/WIDER_train/images'
+save_dir = '/home/tamvm/Projects/MTCNN-Tensorflow/data/12'
+pos_save_dir = os.path.join(save_dir, 'positive')
+part_save_dir = os.path.join(save_dir, 'part')
+neg_save_dir = os.path.join(save_dir, 'negative')
+
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)
 if not os.path.exists(pos_save_dir):
@@ -26,6 +28,7 @@ f2 = open(os.path.join(save_dir, 'neg_12.txt'), 'w')
 f3 = open(os.path.join(save_dir, 'part_12.txt'), 'w')
 with open(anno_file, 'r') as f:
     annotations = f.readlines()
+
 num = len(annotations)
 print("%d pics in total" % num)
 p_idx = 0 # positive
@@ -33,6 +36,7 @@ n_idx = 0 # negative
 d_idx = 0 # don't care
 idx = 0
 box_idx = 0
+
 for annotation in annotations:
     annotation = annotation.strip().split(' ')
     #image path
@@ -71,11 +75,10 @@ for annotation in annotations:
         #resize the cropped image to size 12*12
         resized_im = cv2.resize(cropped_im, (12, 12), interpolation=cv2.INTER_LINEAR)
 
-
         if np.max(Iou) < 0.3:
             # Iou with all gts must below 0.3
             save_file = os.path.join(neg_save_dir, "%s.jpg"%n_idx)
-            f2.write("../../DATA/12/negative/%s.jpg"%n_idx + ' 0\n')
+            f2.write(save_file + ' 0\n')
             cv2.imwrite(save_file, resized_im)
             n_idx += 1
             neg_num += 1
@@ -121,14 +124,12 @@ for annotation in annotations:
             if np.max(Iou) < 0.3:
                 # Iou with all gts must below 0.3
                 save_file = os.path.join(neg_save_dir, "%s.jpg" % n_idx)
-                f2.write("../../DATA/12/negative/%s.jpg" % n_idx + ' 0\n')
+                f2.write(save_file + ' 0\n')
                 cv2.imwrite(save_file, resized_im)
                 n_idx += 1
 
 
         #generate positive examples and part faces
-
-
         for i in range(20):
             # pos and part face size [minsize*0.8,maxsize*1.25]
             size = npr.randint(int(min(w, h) * 0.8), np.ceil(1.25 * max(w, h)))
@@ -168,12 +169,12 @@ for annotation in annotations:
             iou = IoU(crop_box, box_)
             if iou  >= 0.65:
                 save_file = os.path.join(pos_save_dir, "%s.jpg"%p_idx)
-                f1.write("../../DATA/12/positive/%s.jpg"%p_idx + ' 1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
+                f1.write(save_file + ' 1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
                 cv2.imwrite(save_file, resized_im)
                 p_idx += 1
             elif iou >= 0.4:
                 save_file = os.path.join(part_save_dir, "%s.jpg"%d_idx)
-                f3.write("../../DATA/12/part/%s.jpg"%d_idx + ' -1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
+                f3.write(save_file + ' -1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
                 cv2.imwrite(save_file, resized_im)
                 d_idx += 1
         box_idx += 1

@@ -18,11 +18,11 @@ def train_PNet(base_dir, prefix, end_epoch, display, lr):
 
 if __name__ == '__main__':
     #data path
-    base_dir = '../../DATA/imglists/PNet'
-    model_name = 'MTCNN'
+    base_dir = '/home/tamvm/Projects/MTCNN-Tensorflow/data/imglists/PNet'
+    # model_name = 'MTCNN'
     #model_path = '../data/%s_model/PNet/PNet' % model_name
     #with landmark
-    model_path = '../data/%s_model/PNet_landmark/PNet' % model_name
+    model_path = '/home/tamvm/Projects/MTCNN-Tensorflow/data/MTCNN68_model/PNet_landmark/PNet'
             
     prefix = model_path
     end_epoch = 30

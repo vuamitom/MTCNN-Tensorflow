@@ -6,9 +6,11 @@ import cv2
 import os
 #just for RNet and ONet, since I change the method of making tfrecord
 #as for PNet
-def read_single_tfrecord(tfrecord_file, batch_size, net):
+
+def read_single_tfrecord(tfrecord_file, batch_size, net, no_landmarks):
     # generate a input queue
     # each epoch shuffle
+    # print('====================>>>>> ', no_landmarks)
     filename_queue = tf.train.string_input_producer([tfrecord_file],shuffle=True)
     # read tfrecord
     reader = tf.TFRecordReader()
@@ -19,7 +21,7 @@ def read_single_tfrecord(tfrecord_file, batch_size, net):
             'image/encoded': tf.FixedLenFeature([], tf.string),#one image  one record
             'image/label': tf.FixedLenFeature([], tf.int64),
             'image/roi': tf.FixedLenFeature([4], tf.float32),
-            'image/landmark': tf.FixedLenFeature([10],tf.float32)
+            'image/landmark': tf.FixedLenFeature([no_landmarks * 2],tf.float32)
         }
     )
     if net == 'PNet':
@@ -44,7 +46,8 @@ def read_single_tfrecord(tfrecord_file, batch_size, net):
     )
     label = tf.reshape(label, [batch_size])
     roi = tf.reshape(roi,[batch_size,4])
-    landmark = tf.reshape(landmark,[batch_size,10])
+    landmark = tf.reshape(landmark,[batch_size, no_landmarks * 2])
+    # print('done abc')
     return image, label, roi,landmark
 
 def read_multi_tfrecords(tfrecord_files, batch_sizes, net):
@@ -62,13 +65,12 @@ def read_multi_tfrecords(tfrecord_files, batch_sizes, net):
 
     images = tf.concat([pos_image,part_image,neg_image,landmark_image], 0, name="concat/image")
     print(images.get_shape())
-    labels = tf.concat([pos_label,part_label,neg_label,landmark_label],0,name="concat/label")
-    print
+    labels = tf.concat([pos_label,part_label,neg_label,landmark_label], 0,name="concat/label")
     assert isinstance(labels, object)
     labels.get_shape()
-    rois = tf.concat([pos_roi,part_roi,neg_roi,landmark_roi],0,name="concat/roi")
+    rois = tf.concat([pos_roi,part_roi,neg_roi,landmark_roi], 0,name="concat/roi")
     print( rois.get_shape())
-    landmarks = tf.concat([pos_landmark,part_landmark,neg_landmark,landmark_landmark],0,name="concat/landmark")
+    landmarks = tf.concat([pos_landmark,part_landmark,neg_landmark,landmark_landmark], 0,name="concat/landmark")
     return images,labels,rois,landmarks
     
 def read():

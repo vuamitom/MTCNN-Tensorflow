@@ -31,14 +31,13 @@ def drawLandmark(img, bbox, landmark):
         cv2.circle(img, (int(x), int(y)), 2, (0,255,0), -1)
     return img
 
-def getDataFromTxt(txt,data_path, with_landmark=True):
+def getDataFromTxt(txt, data_path=None, with_landmark=True, no_landmarks=5):
     """
         Generate data from txt file
         return [(img_path, bbox, landmark)]
             bbox: [left, right, top, bottom]
             landmark: [(x1, y1), (x2, y2), ...]
     """
-
 
     with open(txt, 'r') as fd:
         lines = fd.readlines()
@@ -47,7 +46,10 @@ def getDataFromTxt(txt,data_path, with_landmark=True):
     for line in lines:
         line = line.strip()
         components = line.split(' ')
-        img_path = os.path.join(data_path, components[0]).replace('\\','/') # file path
+        if data_path is not None:
+            img_path = os.path.join(data_path, components[0]).replace('\\','/') # file path
+        else:
+            img_path = components[0]
 
         # bounding box, (x1, y1, x2, y2)
         #bbox = (components[1], components[2], components[3], components[4])
@@ -58,8 +60,8 @@ def getDataFromTxt(txt,data_path, with_landmark=True):
         if not with_landmark:
             result.append((img_path, BBox(bbox)))
             continue
-        landmark = np.zeros((5, 2))
-        for index in range(0, 5):
+        landmark = np.zeros((no_landmarks, 2))
+        for index in range(0, no_landmarks):
             rv = (float(components[5+2*index]), float(components[5+2*index+1]))
             landmark[index] = rv
         #normalize

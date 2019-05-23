@@ -175,6 +175,7 @@ def _process_image(filename, coder):
     assert image.shape[2] == 3
 
     return image_data, height, width
+
 def _process_image_withoutcoder(filename):
     #print(filename)
     image = cv2.imread(filename)
@@ -189,4 +190,31 @@ def _process_image_withoutcoder(filename):
     return image_data, height, width
 
 
+def sample_to_tfrecord(filename, data):
+    # encoded_jpg, _, _ = _process_image_withoutcoder(filename)
+    decoded_jpeg = cv2.imread(filename)
+    # print('len jpg = ', len(decoded_jpeg), ' shape ', decoded_jpeg.shape)
+    # print ('len = ', len(decoded_jpeg.tostring()))
+    # return null
+    class_label = data['label']
+    bbox = data['bbox']
+    roi = [bbox['xmin'],bbox['ymin'],bbox['xmax'],bbox['ymax']]
+    landmark = bbox['landmarks']
+    # landmark = [bbox['xlefteye'],bbox['ylefteye'],bbox['xrighteye'],bbox['yrighteye'],bbox['xnose'],bbox['ynose'],
+    #             bbox['xleftmouth'],bbox['yleftmouth'],bbox['xrightmouth'],bbox['yrightmouth']]
+                
+    # print('landmark size = ', len(landmark))
+    assert len(landmark) == 136
+    example = tf.train.Example(features=tf.train.Features(feature={
+        'image/encoded': _bytes_feature(decoded_jpeg.tostring()),
+        'image/label': _int64_feature(class_label),
+        'image/roi': _float_feature(roi),
+        'image/landmark': _float_feature(landmark)
+    }))
+    return example
 
+
+# def process_image_for_tfrecord(filename):
+#     with tf.gfile.GFile(filename, 'rb') as fid:
+#         encoded_jpg = fid.read()
+#     return encoded_jpg
