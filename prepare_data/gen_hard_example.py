@@ -189,13 +189,21 @@ def t_net(prefix, epoch,
     save_hard_example(image_size, data, save_path)
 
 
+def generate_data(widerface_txt, output_dir, save_net):
+    
+    filename = './wider_face_train_bbx_gt.txt'
+
+    data = read_annotation(widerface_txt)
+    
+    save_hard_example(image_size, data, output_dir)
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Test mtcnn',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--test_mode', dest='test_mode', help='test net type, can be pnet, rnet or onet',
-                        default='RNet', type=str)
+    # parser.add_argument('--test_mode', dest='test_mode', help='test net type, can be pnet, rnet or onet',
+    #                     default='RNet', type=str)
     parser.add_argument('--prefix', dest='prefix', help='prefix of model name', nargs="+",
-                        default=['../data/MTCNN_model/PNet_No_Landmark/PNet', '../data/MTCNN_model/RNet_No_Landmark/RNet', '../data/MTCNN_model/ONet_No_Landmark/ONet'],
+                        default=['../data/MTCNN_model/PNet_landmark/PNet', '../data/MTCNN_model/RNet_landmark/RNet', '../data/MTCNN_model/ONet_landmark/ONet'],
                         type=str)
     parser.add_argument('--epoch', dest='epoch', help='epoch number of model to load', nargs="+",
                         default=[18, 14, 16], type=int)
@@ -217,15 +225,17 @@ def parse_args():
 
 if __name__ == '__main__':
 
-    net = 'ONet'
+    net = 'RNet'
 
     if net == "RNet":
+        # epoch = 14
         image_size = 24
     if net == "ONet":
+        # epoch = 16
         image_size = 48
 
-    base_dir = '../../DATA/WIDER_train'
-    data_dir = '../../DATA/no_LM%s' % str(image_size)
+    base_dir = '/home/tamvm/Projects/tensorflow-models/research/object_detection/WIDER_train'
+    data_dir = '/home/tamvm/Projects/MTCNN-Tensorflow/data/no_LM%s' % str(image_size)
     
     neg_dir = get_path(data_dir, 'negative')
     pos_dir = get_path(data_dir, 'positive')
@@ -242,7 +252,8 @@ if __name__ == '__main__':
     t_net(args.prefix,#model param's file
           args.epoch, #final epoches
           args.batch_size, #test batch_size 
-          args.test_mode,#test which model
+          # args.test_mode,#test which model
+          net,
           args.thresh, #cls threshold
           args.min_face, #min_face
           args.stride,#stride

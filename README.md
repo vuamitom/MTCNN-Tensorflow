@@ -1,20 +1,24 @@
 ## Description
-This work is used for reproduce MTCNN,a Joint Face Detection and Alignment using Multi-task Cascaded Convolutional Networks.
+This fork is to modify the original repo so that network produces 68 landmarks instead of 5.
 
 ## Prerequisites
 1. You need CUDA-compatible GPUs to train the model.
-2. You should first download [WIDER Face](http://mmlab.ie.cuhk.edu.hk/projects/WIDERFace/) and [Celeba](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html).**WIDER Face** for face detection and **Celeba** for landmark detection(This is required by original paper.But I found some labels were wrong in Celeba. So I use [this dataset](http://mmlab.ie.cuhk.edu.hk/archive/CNN_FacePoint.htm) for landmark detection).
+2. You should first download [WIDER Face](http://mmlab.ie.cuhk.edu.hk/projects/WIDERFace/) and [ibug](http://dlib.net/files/data/ibug_300W_large_face_landmark_dataset.tar.gz).**WIDER Face** for face detection and **ibug** dataset for landmark detection
 
 ## Dependencies
 * Tensorflow 1.2.1
 * TF-Slim
-* Python 2.7
+* Python 3.6
 * Ubuntu 16.04
 * Cuda 8.0
 
-## Prepare For Training Data
+## Prepare For Training Data 
+
 1. Download Wider Face Training part only from Official Website , unzip to replace `WIDER_train` and put it into `prepare_data` folder.
-2. Download landmark training data from [here]((http://mmlab.ie.cuhk.edu.hk/archive/CNN_FacePoint.htm)),unzip and put them into `prepare_data` folder.
+2. Download landmark training data from [here](http://dlib.net/files/data/ibug_300W_large_face_landmark_dataset.tar.gz), unzip and put them into `prepare_data` folder.
+
+2. First run `gen_landmark_from_ibug.py` to get the input txt file that the original code requires.
+
 3. Run `prepare_data/gen_12net_data.py` to generate training data(Face Detection Part) for **PNet**.
 4. Run `gen_landmark_aug_12.py` to generate training data(Face Landmark Detection Part) for **PNet**.
 5. Run `gen_imglist_pnet.py` to merge two parts of training data.
