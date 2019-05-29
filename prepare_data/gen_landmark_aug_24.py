@@ -3,6 +3,7 @@ import os
 import time
 import math
 from os.path import join, exists
+import numpy as np
 
 from prepare_data.gen_landmark_aug import GenerateData
 # import cv2

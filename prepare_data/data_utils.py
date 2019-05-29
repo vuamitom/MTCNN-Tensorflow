@@ -29,10 +29,13 @@ def read_annotation(base_dir, label_path):
         imagepath = labelfile.readline().strip('\n')
         if not imagepath:
             break
-        imagepath = base_dir + '/WIDER_train/images/' + imagepath
+        imagepath = os.path.join(base_dir, imagepath)
         images.append(imagepath)
         # face numbers
-        nums = labelfile.readline().strip('\n')
+        nums = int(labelfile.readline().strip('\n'))
+        if nums == 0:
+            # my dataset has one extra line of 0 0 0 0 .... 0
+            nums = 1
         # im = cv2.imread(imagepath)
         # h, w, c = im.shape
         one_image_bboxes = []

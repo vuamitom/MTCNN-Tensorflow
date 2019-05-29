@@ -41,7 +41,14 @@ def gen_landmark_txt(xml_path, img_dir, output_file):
             line.append(str(coor))
 
         # cc = 0
+        # prev = 0
         for p in box.iter('part'):
+            # n = int(p.get('name'))
+            # if n < prev:
+            #     print('ERROR')
+            #     exit(0)
+            # else:
+            #     prev = n 
             line.append(p.get('x'))
             line.append(p.get('y'))
         #     cc += 1
@@ -52,6 +59,8 @@ def gen_landmark_txt(xml_path, img_dir, output_file):
         # lmc = cc if cc > lmc else lmc 
         content.append(' '.join(line))
         total += 1
+    # print('OK')
+    # exit(0)
     with open(output_file, 'w') as f:
         f.write('\n'.join(content))
         # with Image.open(path) as imgRef:

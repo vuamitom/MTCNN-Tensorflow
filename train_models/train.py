@@ -18,7 +18,8 @@ import cv2
 
 no_landmarks = 68
 
-def train_model(base_lr, loss, data_num, quantize=True):
+
+def train_model(base_lr, loss, data_num, quantize=True, optimizer_type='momentum'):
     """
     train model
     :param base_lr: base learning rate
@@ -38,9 +39,12 @@ def train_model(base_lr, loss, data_num, quantize=True):
     lr_op = tf.train.piecewise_constant(global_step, boundaries, lr_values)
     # quantize graph 
     if quantize:
-        tf.contrib.quantize.create_training_graph(input_graph=tf.get_default_graph(), quant_delay=500000)
-
-    optimizer = tf.train.MomentumOptimizer(lr_op, 0.9)
+        tf.contrib.quantize.create_training_graph(input_graph=tf.get_default_graph(), quant_delay=20000)
+    if optimizer_type == 'adam':
+        # optimizer = tf.train.AdamOptimizer(lr_op, 0.9)
+        optimizer = tf.train.AdamOptimizer(base_lr, 0.9, 0.999)
+    else:
+        optimizer = tf.train.MomentumOptimizer(lr_op, 0.9)
     train_op = optimizer.minimize(loss, global_step)
     return train_op, lr_op
 
@@ -66,6 +70,48 @@ def random_flip_images(image_batch,label_batch,landmark_batch):
     return image_batch,landmark_batch
 '''
 # all mini-batch mirror
+
+def flip_indices():
+    """
+    refer to https://ibug.doc.ic.ac.uk/resources/facial-point-annotations/
+    """
+    r = []
+    if no_landmarks == 68:
+    
+        # chin
+        for i in range(0, 8):
+            r.append([i, 16 - i])
+        # forhead
+        for i in range(17, 22):
+            r.append([i, 43 - i])
+        # upper eyes
+        for i in range(36, 40):
+            r.append([i, 81 - i])
+
+        # lower eyes
+        r.append([41, 46])
+        r.append([40, 47])
+
+        # nose
+        r.append([31, 35])
+        r.append([32, 34])
+
+        # lips
+        r.append([48, 54])
+        r.append([49, 53])
+        r.append([50, 52])
+        r.append([60, 64])
+        r.append([61, 63])
+        r.append([59, 55])
+        r.append([67, 65])
+        r.append([58, 56])
+    else:
+        r.append([0, 1])
+        r.append([3, 4])
+    return r
+
+landmark_indices_to_flip = flip_indices()
+
 def random_flip_images(image_batch,label_batch,landmark_batch):
     #mirror
     if random.choice([0,1]) > 0:
@@ -82,10 +128,19 @@ def random_flip_images(image_batch,label_batch,landmark_batch):
         for i in fliplandmarkindexes:
             landmark_ = landmark_batch[i].reshape((-1,2))
             landmark_ = np.asarray([(1-x, y) for (x, y) in landmark_])
-            landmark_[[0, 1]] = landmark_[[1, 0]]#left eye<->right eye
-            landmark_[[3, 4]] = landmark_[[4, 3]]#left mouth<->right mouth        
+            # landmark_[[0, 1]] = landmark_[[1, 0]]#left eye<->right eye
+            # landmark_[[3, 4]] = landmark_[[4, 3]]#left mouth<->right mouth
+            for pair in landmark_indices_to_flip:
+                reverse_pair = [pair[1], pair[0]]
+                landmark_[pair] = landmark_[reverse_pair]        
             landmark_batch[i] = landmark_.ravel()
-        
+        # print('flipindices', flipindexes.shape, flipindexes)
+        # print('fliplandmarkindexes', fliplandmarkindexes.shape, fliplandmarkindexes)
+        # print('flipposindexes', flipposindexes.shape, flipposindexes)
+        # exit(0)
+        # test_img = image_batch[flipindexes[0]] * 128 + 127.5        
+        # cv2.imshow('test', test_img)
+        # cv2.waitKey(0)
     return image_batch,landmark_batch
 
 def image_color_distort(inputs):
@@ -97,7 +152,7 @@ def image_color_distort(inputs):
     return inputs
 
 def train(net_factory, prefix, end_epoch, base_dir, log_dir,
-          display=200, base_lr=0.01, quantize=True, ckpt=None):
+          display=200, base_lr=0.01, quantize=True, ckpt=None, optimizer='momentum'):
     """
     train PNet/RNet/ONet
     :param net_factory:
@@ -108,6 +163,7 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
     :param base_lr:
     :return:
     """
+    print('start training: ....')
     net = prefix.split('/')[-1]
     #label file
     label_file = os.path.join(base_dir,'train_%s_landmark.txt' % net)
@@ -132,7 +188,7 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
         part_dir = os.path.join(base_dir,'part_landmark.tfrecord_shuffle')
         neg_dir = os.path.join(base_dir,'neg_landmark.tfrecord_shuffle')
         #landmark_dir = os.path.join(base_dir,'landmark_landmark.tfrecord_shuffle')
-        landmark_dir = os.path.join('../../DATA/imglists/RNet','landmark_landmark.tfrecord_shuffle')
+        landmark_dir = os.path.join(base_dir,'landmark_landmark.tfrecord_shuffle')
         dataset_dirs = [pos_dir,part_dir,neg_dir,landmark_dir]
         pos_radio = 1.0/6;part_radio = 1.0/6;landmark_radio=1.0/6;neg_radio=3.0/6
         pos_batch_size = int(np.ceil(config.BATCH_SIZE*pos_radio))
@@ -145,7 +201,7 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
         assert landmark_batch_size != 0,"Batch Size Error "
         batch_sizes = [pos_batch_size,part_batch_size,neg_batch_size,landmark_batch_size]
         #print('batch_size is:', batch_sizes)
-        image_batch, label_batch, bbox_batch,landmark_batch = read_multi_tfrecords(dataset_dirs,batch_sizes, net)        
+        image_batch, label_batch, bbox_batch,landmark_batch = read_multi_tfrecords(dataset_dirs,batch_sizes, net, no_landmarks)        
         
     #landmark_dir    
     if net == 'PNet':
@@ -170,7 +226,7 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
     total_loss_op  = radio_cls_loss*cls_loss_op + radio_bbox_loss*bbox_loss_op + radio_landmark_loss*landmark_loss_op + L2_loss_op
     train_op, lr_op = train_model(base_lr,
                                   total_loss_op,
-                                  num, quantize)
+                                  num, quantize, optimizer)
     
 
     # init
@@ -256,9 +312,9 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
                     path_prefix = saver.save(sess, prefix, global_step=step)
                     print ('Total loss improved, save model ', path_prefix)
             # save every end of epochs
-            if i > 0 and i % step_per_epoch == 0:                
-                path_prefix = saver.save(sess, prefix, global_step=step)
-                print('Save end of epoch, path prefix is :', path_prefix)
+            # if i > 0 and i % step_per_epoch == 0:                
+            #     path_prefix = saver.save(sess, prefix, global_step=step)
+            #     print('Save end of epoch, path prefix is :', path_prefix)
             writer.add_summary(summary,global_step=step)
     except tf.errors.OutOfRangeError:
         print("完成！！！")

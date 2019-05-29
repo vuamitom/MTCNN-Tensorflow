@@ -225,9 +225,9 @@ class MtcnnDetector(object):
             boxes = self.generate_bbox(cls_cls_map[:, :, 1], reg, current_scale, self.thresh[0])
             # scale_factor is 0.79 in default
             # print('gen boxes size = ', boxes.shape)
-            if boxes.size > 0:
-                print('map size ', cls_cls_map.shape, 'box size = ', boxes.shape , ' for size ', current_height)
-                print('scores = ', boxes[:, 4])
+            # if boxes.size > 0:
+            #     print('map size ', cls_cls_map.shape, 'box size = ', boxes.shape , ' for size ', current_height)
+            #     print('scores = ', boxes[:, 4])
             current_scale *= self.scale_factor
             im_resized = self.processed_image(im, current_scale, round if self.pnet_detector.is_quantized else int)
             current_height, current_width, _ = im_resized.shape
@@ -243,16 +243,16 @@ class MtcnnDetector(object):
 
         if len(all_boxes) == 0:
             return None, None, None
-        print ('all_boxes len = ', len(all_boxes))
+        # print ('all_boxes len = ', len(all_boxes))
 
-        for boxes in all_boxes:
-            print('len box = ', boxes.shape)
+        # for boxes in all_boxes:
+        #     print('len box = ', boxes.shape)
         all_boxes = np.vstack(all_boxes)
 
         # merge the detection from first stage
-        print ('input to nms shape= ', all_boxes.shape, 'shape 2 ', all_boxes[:, 0:5].shape)
+        # print ('input to nms shape= ', all_boxes.shape, 'shape 2 ', all_boxes[:, 0:5].shape)
         keep = py_nms(all_boxes[:, 0:5], 0.7, 'Union')
-        print ('box shape after nms = ', keep)
+        # print ('box shape after nms = ', keep)
         all_boxes = all_boxes[keep]
         boxes = all_boxes[:, :5]
 
@@ -266,9 +266,9 @@ class MtcnnDetector(object):
                              all_boxes[:, 3] + all_boxes[:, 8] * bbh,
                              all_boxes[:, 4]])
         boxes_c = boxes_c.T
-        print('boxes shape', boxes.shape, ' box_c shape ', boxes_c.shape)
-        print('boxes', boxes)
-        print('boxes_c', boxes_c)
+        # print('boxes shape', boxes.shape, ' box_c shape ', boxes_c.shape)
+        # print('boxes', boxes)
+        # print('boxes_c', boxes_c)
         return boxes, boxes_c, None
 
     def detect_rnet(self, im, dets):
@@ -389,7 +389,7 @@ class MtcnnDetector(object):
 
             t1 = time.time() - t
             t = time.time()
-        print('no box after pnet ', boxes_c.shape)
+        # print('no box after pnet ', boxes_c.shape)
         # rnet
         t2 = 0
         if self.rnet_detector:
@@ -400,7 +400,7 @@ class MtcnnDetector(object):
             t2 = time.time() - t
             t = time.time()
 
-        print('no box after rnet ', boxes_c.shape)
+        # print('no box after rnet ', boxes_c.shape)
         # onet
         t3 = 0
         if self.onet_detector:
@@ -413,7 +413,7 @@ class MtcnnDetector(object):
             # print(
             #    "time cost " + '{:.3f}'.format(t1 + t2 + t3) + '  pnet {:.3f}  rnet {:.3f}  onet {:.3f}'.format(t1, t2,
             #                                                                                                  t3))
-        print('no box after onet ', boxes_c.shape)
+        # print('no box after onet ', boxes_c.shape)
         return boxes_c, landmark
 
     def detect_face(self, test_data):

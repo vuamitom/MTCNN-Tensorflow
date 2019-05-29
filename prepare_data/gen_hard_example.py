@@ -19,7 +19,7 @@ from utils import *
 from prepare_data.data_utils import *
 #net : 24(RNet)/48(ONet)
 #data: dict()
-def save_hard_example(net, data,save_path):
+def save_hard_example(net, data, save_path):
     # load ground truth from annotation file
     # format of each line: image/path [x1,y1,x2,y2] for each gt_box in this image
 
@@ -30,15 +30,15 @@ def save_hard_example(net, data,save_path):
 
     print("processing %d images in total" % num_of_images)
 
-    
+    output_dir = '/home/tamvm/Projects/MTCNN-Tensorflow/data'
     # save files
-    neg_label_file = "../../DATA/no_LM%d/neg_%d.txt" % (net, image_size)
+    neg_label_file = os.path.join(output_dir, "no_LM%d/neg_%d.txt" % (net, image_size))
     neg_file = open(neg_label_file, 'w')
 
-    pos_label_file = "../../DATA/no_LM%d/pos_%d.txt" % (net, image_size)
+    pos_label_file = os.path.join(output_dir, "no_LM%d/pos_%d.txt" % (net, image_size))
     pos_file = open(pos_label_file, 'w')
 
-    part_label_file = "../../DATA/no_LM%d/part_%d.txt" % (net, image_size)
+    part_label_file = os.path.join(output_dir, "no_LM%d/part_%d.txt" % (net, image_size))
     part_file = open(part_label_file, 'w')
     #read detect result
     det_boxes = pickle.load(open(os.path.join(save_path, 'detections.pkl'), 'rb'))
@@ -56,11 +56,14 @@ def save_hard_example(net, data,save_path):
     #det_boxes detect result(list)
     #gt_boxes_list gt(list)
     for im_idx, dets, gts in zip(im_idx_list, det_boxes, gt_boxes_list):
+        # if im_idx < 7600:
+        #     continue
         gts = np.array(gts, dtype=np.float32).reshape(-1, 4)
         if image_done % 100 == 0:
             print("%d images done" % image_done)
         image_done += 1
-
+        # if image_done < 7600:
+        #     continue
         if dets.shape[0] == 0:
             continue
         img = cv2.imread(im_idx)
@@ -142,7 +145,7 @@ def t_net(prefix, epoch,
 
     # load rnet model
     if test_mode in ["RNet", "ONet"]:
-        print("==================================", test_mode)
+        print("==================================", test_mode, model_path[1])
         RNet = Detector(R_Net, 24, batch_size[1], model_path[1])
         detectors[1] = RNet
 
@@ -152,11 +155,11 @@ def t_net(prefix, epoch,
         ONet = Detector(O_Net, 48, batch_size[2], model_path[2])
         detectors[2] = ONet
         
-    basedir = '../../DATA/'
+    basedir = '/home/tamvm/Projects/tensorflow-models/research/object_detection/WIDER_train/images/'
     #anno_file
-    filename = './wider_face_train_bbx_gt.txt'
+    filename = '/home/tamvm/Projects/tensorflow-models/research/object_detection/wider_face_split/wider_face_train_bbx_gt.txt'
     #read anotation(type:dict), include 'images' and 'bboxes'
-    data = read_annotation(basedir,filename)
+    data = read_annotation(basedir, filename)
     mtcnn_detector = MtcnnDetector(detectors=detectors, min_face_size=min_face_size,
                                    stride=stride, threshold=thresh, slide_window=slide_window)
     print("==================================")
@@ -200,13 +203,13 @@ def generate_data(widerface_txt, output_dir, save_net):
 def parse_args():
     parser = argparse.ArgumentParser(description='Test mtcnn',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    # parser.add_argument('--test_mode', dest='test_mode', help='test net type, can be pnet, rnet or onet',
-    #                     default='RNet', type=str)
+    parser.add_argument('--test_mode', dest='test_mode', help='test net type, can be pnet, rnet or onet',
+                        default='PNet', type=str)
     parser.add_argument('--prefix', dest='prefix', help='prefix of model name', nargs="+",
-                        default=['../data/MTCNN_model/PNet_landmark/PNet', '../data/MTCNN_model/RNet_landmark/RNet', '../data/MTCNN_model/ONet_landmark/ONet'],
+                        default=['../data/MTCNN68_model/PNet_landmark/PNet', '../data/MTCNN68_model/RNet_landmark/RNet', '../data/MTCNN68_model/ONet_landmark/ONet'],
                         type=str)
     parser.add_argument('--epoch', dest='epoch', help='epoch number of model to load', nargs="+",
-                        default=[18, 14, 16], type=int)
+                        default=[433599, 14, 16], type=int)
     parser.add_argument('--batch_size', dest='batch_size', help='list of batch size used in prediction', nargs="+",
                         default=[2048, 256, 16], type=int)
     parser.add_argument('--thresh', dest='thresh', help='list of thresh for pnet, rnet, onet', nargs="+",
@@ -249,14 +252,22 @@ if __name__ == '__main__':
 
     print('Called with argument:')
     print(args)
-    t_net(args.prefix,#model param's file
-          args.epoch, #final epoches
-          args.batch_size, #test batch_size 
-          # args.test_mode,#test which model
-          net,
-          args.thresh, #cls threshold
-          args.min_face, #min_face
-          args.stride,#stride
-          args.slide_window, 
-          args.shuffle, 
-          vis=False)
+    if False:
+        t_net(args.prefix,#model param's file
+              args.epoch, #final epoches
+              args.batch_size, #test batch_size 
+              args.test_mode,#test which model
+              args.thresh, #cls threshold
+              args.min_face, #min_face
+              args.stride,#stride
+              args.slide_window, 
+              args.shuffle, 
+              vis=False)
+    else:
+        basedir = '/home/tamvm/Projects/tensorflow-models/research/object_detection/WIDER_train/images/'
+        #anno_file
+        filename = '/home/tamvm/Projects/tensorflow-models/research/object_detection/wider_face_split/wider_face_train_bbx_gt.txt'
+        #read anotation(type:dict), include 'images' and 'bboxes'
+        data = read_annotation(basedir, filename)
+        save_path = '/home/tamvm/Projects/MTCNN-Tensorflow/data/no_LM24/RNet/'
+        save_hard_example(image_size, data, save_path)

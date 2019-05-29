@@ -282,7 +282,7 @@ def R_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
         bbox_pred = slim.fully_connected(fc1,num_outputs=4,scope="bbox_fc",activation_fn=None)
         print('bbox_fc', bbox_pred.get_shape())
         #batch*10
-        landmark_pred = slim.fully_connected(fc1,num_outputs=10,scope="landmark_fc",activation_fn=None)
+        landmark_pred = slim.fully_connected(fc1,num_outputs=(no_landmarks *2),scope="landmark_fc",activation_fn=None)
         print('landmark_fc', landmark_pred.get_shape())
         #train
         if training:
@@ -329,7 +329,7 @@ def O_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
         bbox_pred = slim.fully_connected(fc1,num_outputs=4,scope="bbox_fc",activation_fn=None)
         print('bbox_fc', bbox_pred.get_shape())
         #batch*10
-        landmark_pred = slim.fully_connected(fc1,num_outputs=10,scope="landmark_fc",activation_fn=None)
+        landmark_pred = slim.fully_connected(fc1,num_outputs=(no_landmarks*2),scope="landmark_fc",activation_fn=None)
         print('landmark_fc', landmark_pred.get_shape())
         #train
         if training:

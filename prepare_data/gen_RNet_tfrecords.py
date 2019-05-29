@@ -6,25 +6,25 @@ import time
 
 import tensorflow as tf
 
-from prepare_data.tfrecord_utils import _process_image_withoutcoder, _convert_to_example_simple
+from prepare_data.tfrecord_utils import sample_to_tfrecord #_process_image_withoutcoder, _convert_to_example_simple
 
 
-def _add_to_tfrecord(filename, image_example, tfrecord_writer):
-    """Loads data from image and annotations files and add them to a TFRecord.
+# def _add_to_tfrecord(filename, image_example, tfrecord_writer):
+#     """Loads data from image and annotations files and add them to a TFRecord.
 
-    Args:
-      dataset_dir: Dataset directory;
-      name: Image name to add to the TFRecord;
-      tfrecord_writer: The TFRecord writer to use for writing.
-    """
-    #print('---', filename)
-    #imaga_data:array to string
-    #height:original image's height
-    #width:original image's width
-    #image_example dict contains image's info
-    image_data, height, width = _process_image_withoutcoder(filename)
-    example = _convert_to_example_simple(image_example, image_data)
-    tfrecord_writer.write(example.SerializeToString())
+#     Args:
+#       dataset_dir: Dataset directory;
+#       name: Image name to add to the TFRecord;
+#       tfrecord_writer: The TFRecord writer to use for writing.
+#     """
+#     #print('---', filename)
+#     #imaga_data:array to string
+#     #height:original image's height
+#     #width:original image's width
+#     #image_example dict contains image's info
+#     image_data, height, width = _process_image_withoutcoder(filename)
+#     example = _convert_to_example_simple(image_example, image_data)
+#     tfrecord_writer.write(example.SerializeToString())
 
 
 def _get_output_filename(output_dir, name, net):
@@ -63,14 +63,16 @@ def run(dataset_dir, net, output_dir, name='MTCNN', shuffling=False):
                 sys.stdout.write('\r>> %d/%d images has been converted' % (i+1, len(dataset)))
             sys.stdout.flush()
             filename = image_example['filename']
-            _add_to_tfrecord(filename, image_example, tfrecord_writer)
+            # _add_to_tfrecord(filename, image_example, tfrecord_writer)
+            example = sample_to_tfrecord(filename, image_example)
+            tfrecord_writer.write(example.SerializeToString())
     # Finally, write the labels file:
     # labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
     # dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
     print('\nFinished converting the MTCNN dataset!')
 
 
-def get_dataset(dir, name, net='PNet'):
+def get_dataset(datadir, name, net='PNet'):
     '''
 
     :param dir: directory of the raw data
@@ -79,9 +81,13 @@ def get_dataset(dir, name, net='PNet'):
     '''
     #item = 'imglists/PNet/train_%s_raw.txt' % net
     #item = 'imglists/PNet/train_%s_landmark.txt' % net
-    item = '%s/%s_24.txt' % (net,name)
+    no_landmarks = 68
+    if name == 'landmark':
+        item = 'imglists_noLM/RNet/train_RNet_landmark.txt'
+    else:
+        item = '%s/%s_24.txt' % (net, name)
 
-    dataset_dir = os.path.join(dir, item)
+    dataset_dir = os.path.join(datadir, item)
     print('dataset dir is :', dataset_dir)
     imagelist = open(dataset_dir, 'r')
 
@@ -96,32 +102,34 @@ def get_dataset(dir, name, net='PNet'):
         bbox['ymin'] = 0
         bbox['xmax'] = 0
         bbox['ymax'] = 0
-        bbox['xlefteye'] = 0
-        bbox['ylefteye'] = 0
-        bbox['xrighteye'] = 0
-        bbox['yrighteye'] = 0
-        bbox['xnose'] = 0
-        bbox['ynose'] = 0
-        bbox['xleftmouth'] = 0
-        bbox['yleftmouth'] = 0
-        bbox['xrightmouth'] = 0
-        bbox['yrightmouth'] = 0        
+        bbox['landmarks'] = [0.0 for x in range(0, no_landmarks*2)]
+        # bbox['xlefteye'] = 0
+        # bbox['ylefteye'] = 0
+        # bbox['xrighteye'] = 0
+        # bbox['yrighteye'] = 0
+        # bbox['xnose'] = 0
+        # bbox['ynose'] = 0
+        # bbox['xleftmouth'] = 0
+        # bbox['yleftmouth'] = 0
+        # bbox['xrightmouth'] = 0
+        # bbox['yrightmouth'] = 0        
         if len(info) == 6:
             bbox['xmin'] = float(info[2])
             bbox['ymin'] = float(info[3])
             bbox['xmax'] = float(info[4])
             bbox['ymax'] = float(info[5])
-        if len(info) == 12:
-            bbox['xlefteye'] = float(info[2])
-            bbox['ylefteye'] = float(info[3])
-            bbox['xrighteye'] = float(info[4])
-            bbox['yrighteye'] = float(info[5])
-            bbox['xnose'] = float(info[6])
-            bbox['ynose'] = float(info[7])
-            bbox['xleftmouth'] = float(info[8])
-            bbox['yleftmouth'] = float(info[9])
-            bbox['xrightmouth'] = float(info[10])
-            bbox['yrightmouth'] = float(info[11])
+        if len(info) == 138:
+            bbox['landmarks'] = [float(x) for x in info[2:(no_landmarks * 2 + 2)]]
+            # bbox['xlefteye'] = float(info[2])
+            # bbox['ylefteye'] = float(info[3])
+            # bbox['xrighteye'] = float(info[4])
+            # bbox['yrighteye'] = float(info[5])
+            # bbox['xnose'] = float(info[6])
+            # bbox['ynose'] = float(info[7])
+            # bbox['xleftmouth'] = float(info[8])
+            # bbox['yleftmouth'] = float(info[9])
+            # bbox['xrightmouth'] = float(info[10])
+            # bbox['yrightmouth'] = float(info[11])
             
         data_example['bbox'] = bbox
         dataset.append(data_example)
@@ -130,10 +138,10 @@ def get_dataset(dir, name, net='PNet'):
 
 
 if __name__ == '__main__':
-    dir = '../../DATA'
+    dir = '/home/tamvm/Projects/MTCNN-Tensorflow/data/'
     net = 'no_LM24'
-    output_directory = '../../DATA/imglists_noLM/RNet'
+    output_directory = '/home/tamvm/Projects/MTCNN-Tensorflow/data/imglists_noLM/RNet'
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
-    name = 'part'
+    name = 'landmark'
     run(dir, net, output_directory,name, shuffling=True)

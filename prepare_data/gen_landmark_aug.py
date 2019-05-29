@@ -26,7 +26,7 @@ def GenerateData(ftxt, size, output, dstdir , argument=False, IoU=IoU):
     '''
     image_id = 0
     #
-    f = open(join(output,"landmark_%s_aug.txt" %(size)),'w')
+    f = open(os.path.join(output,"landmark_%s_aug.txt" %(size)),'w')
     #dstdir = "train_landmark_few"
     # get image path , bounding box, and landmarks from file 'ftxt'
     data = getDataFromTxt(ftxt, None, True, no_landmarks)
@@ -152,7 +152,7 @@ def GenerateData(ftxt, size, output, dstdir , argument=False, IoU=IoU):
 
                 if np.sum(np.where(F_landmarks[i] >= 1, 1, 0)) > 0:
                     continue
-                img_file_path = join(dstdir,"%d.jpg" %(image_id))
+                img_file_path = os.path.join(dstdir,"%d.jpg" %(image_id))
                 cv2.imwrite(img_file_path, F_imgs[i])
                 landmarks = map(str,list(F_landmarks[i]))
                 f.write(img_file_path + " -2 " + " ".join(landmarks)+"\n")

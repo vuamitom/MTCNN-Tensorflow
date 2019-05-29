@@ -3,7 +3,7 @@ from train_models.mtcnn_model import P_Net
 from train_models.train import train
 
 
-def train_PNet(base_dir, prefix, log_dir, model_checkpoint, end_epoch, display, lr):
+def train_PNet(base_dir, prefix, log_dir, model_checkpoint, end_epoch, display, lr, optimizer='momentum'):
     """
     train PNet
     :param dataset_dir: tfrecord path
@@ -17,7 +17,8 @@ def train_PNet(base_dir, prefix, log_dir, model_checkpoint, end_epoch, display, 
     train(net_factory, prefix, end_epoch, base_dir, log_dir, 
             display=display, 
             base_lr=lr,
-            ckpt=model_checkpoint)
+            ckpt=model_checkpoint,
+            optimizer=optimizer)
 
 if __name__ == '__main__':
     #data path
@@ -32,4 +33,4 @@ if __name__ == '__main__':
     end_epoch = 1000
     display = 200
     lr = 0.001
-    train_PNet(base_dir, prefix, log_dir, model_checkpoint, end_epoch, display, lr)
+    train_PNet(base_dir, prefix, log_dir, model_checkpoint, end_epoch, display, lr, 'adam')
