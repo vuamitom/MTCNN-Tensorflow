@@ -12,7 +12,7 @@ from train_models.MTCNN_config import config
 # sys.path.append("../prepare_data")
 # print(sys.path)
 from prepare_data.read_tfrecord_v2 import read_multi_tfrecords,read_single_tfrecord
-
+import math
 import random
 import cv2
 
@@ -39,13 +39,18 @@ def train_model(base_lr, loss, data_num, quantize=True, optimizer_type='momentum
     lr_op = tf.train.piecewise_constant(global_step, boundaries, lr_values)
     # quantize graph 
     if quantize:
+        print('quantize ', quantize)
         tf.contrib.quantize.create_training_graph(input_graph=tf.get_default_graph(), quant_delay=20000)
+    print ('optimizer_type', optimizer_type)
     if optimizer_type == 'adam':
         # optimizer = tf.train.AdamOptimizer(lr_op, 0.9)
-        optimizer = tf.train.AdamOptimizer(base_lr, 0.9, 0.999)
+        print('adam')
+        optimizer = tf.train.AdamOptimizer(lr_op, 0.9, 0.999)
     else:
+        print('momentum')
         optimizer = tf.train.MomentumOptimizer(lr_op, 0.9)
     train_op = optimizer.minimize(loss, global_step)
+    # check_op = tf.add_check_numerics_ops()
     return train_op, lr_op
 
 '''
@@ -151,6 +156,11 @@ def image_color_distort(inputs):
 
     return inputs
 
+def count_nan(v):
+    # print('v = ', v)
+    return np.sum(np.where(np.isnan(v), np.ones_like(v), np.zeros_like(v)))
+    # return tf.reduce_sum(tf.where(tf.is_nan(v), tf.ones_like(v), tf.zeros_like(v)))
+
 def train(net_factory, prefix, end_epoch, base_dir, log_dir,
           display=200, base_lr=0.01, quantize=True, ckpt=None, optimizer='momentum'):
     """
@@ -191,13 +201,13 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
         landmark_dir = os.path.join(base_dir,'landmark_landmark.tfrecord_shuffle')
         dataset_dirs = [pos_dir,part_dir,neg_dir,landmark_dir]
         pos_radio = 1.0/6;part_radio = 1.0/6;landmark_radio=1.0/6;neg_radio=3.0/6
-        pos_batch_size = int(np.ceil(config.BATCH_SIZE*pos_radio))
+        pos_batch_size = int(np.ceil(config.BATCH_SIZE * pos_radio))
         assert pos_batch_size != 0,"Batch Size Error "
-        part_batch_size = int(np.ceil(config.BATCH_SIZE*part_radio))
+        part_batch_size = int(np.ceil(config.BATCH_SIZE * part_radio))
         assert part_batch_size != 0,"Batch Size Error "
-        neg_batch_size = int(np.ceil(config.BATCH_SIZE*neg_radio))
+        neg_batch_size = int(np.ceil(config.BATCH_SIZE * neg_radio))
         assert neg_batch_size != 0,"Batch Size Error "
-        landmark_batch_size = int(np.ceil(config.BATCH_SIZE*landmark_radio))
+        landmark_batch_size = int(np.ceil(config.BATCH_SIZE * landmark_radio))
         assert landmark_batch_size != 0,"Batch Size Error "
         batch_sizes = [pos_batch_size,part_batch_size,neg_batch_size,landmark_batch_size]
         #print('batch_size is:', batch_sizes)
@@ -221,18 +231,17 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
     landmark_target = tf.placeholder(tf.float32,shape=[config.BATCH_SIZE, no_landmarks *2],name='landmark_target')
     #get loss and accuracy
     input_image = image_color_distort(input_image)
-    cls_loss_op,bbox_loss_op,landmark_loss_op,L2_loss_op,accuracy_op = net_factory(input_image, label, bbox_target,landmark_target,training=True)
+    cls_loss_op,bbox_loss_op,landmark_loss_op,L2_loss_op,accuracy_op, landmark_pred = net_factory(input_image, label, bbox_target,landmark_target,training=True)
     #train,update learning rate(3 loss)
-    total_loss_op  = radio_cls_loss*cls_loss_op + radio_bbox_loss*bbox_loss_op + radio_landmark_loss*landmark_loss_op + L2_loss_op
+    # count_nan_op = count_nan(landmark_pred)
+    total_loss_op  = radio_cls_loss*cls_loss_op + radio_bbox_loss*bbox_loss_op + radio_landmark_loss* landmark_loss_op + L2_loss_op
     train_op, lr_op = train_model(base_lr,
                                   total_loss_op,
                                   num, quantize, optimizer)
     
 
     # init
-    init = tf.global_variables_initializer()
     sess = tf.Session()
-
 
     #save model
     saver = tf.train.Saver(max_to_keep=10)
@@ -242,8 +251,9 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
         # get last global step 
         step = int(os.path.basename(ckpt).split('-')[1])
         print('restored from last step = ', step)
-
-    sess.run(init)
+    else:
+        init = tf.global_variables_initializer()
+        sess.run(init)
 
     #visualize some variables
     tf.summary.scalar("cls_loss",cls_loss_op)#cls_loss
@@ -283,16 +293,6 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
             #random flip
             # print('after batch array')
             image_batch_array,landmark_batch_array = random_flip_images(image_batch_array,label_batch_array,landmark_batch_array)
-            '''
-            print('im here')
-            print(image_batch_array.shape)
-            print(label_batch_array.shape)
-            print(bbox_batch_array.shape)
-            print(landmark_batch_array.shape)
-            print(label_batch_array[0])
-            print(bbox_batch_array[0])
-            print(landmark_batch_array[0])
-            '''
 
             # print('->>>>> 1')
             _,_,summary = sess.run([train_op, lr_op ,summary_op], feed_dict={input_image: image_batch_array, label: label_batch_array, bbox_target: bbox_batch_array,landmark_target:landmark_batch_array})
@@ -300,9 +300,17 @@ def train(net_factory, prefix, end_epoch, base_dir, log_dir,
             if (step+1) % display == 0:
                 #acc = accuracy(cls_pred, labels_batch)
                 # print('->>>>> 2') 
-                cls_loss, bbox_loss,landmark_loss,L2_loss,lr,acc = sess.run([cls_loss_op, bbox_loss_op,landmark_loss_op,L2_loss_op,lr_op,accuracy_op],
+                cls_loss, bbox_loss,landmark_loss,L2_loss,lr,acc, landmark_pred_val = sess.run([cls_loss_op, bbox_loss_op,landmark_loss_op,L2_loss_op,lr_op,accuracy_op, landmark_pred],
                                                              feed_dict={input_image: image_batch_array, label: label_batch_array, bbox_target: bbox_batch_array, landmark_target: landmark_batch_array})
-
+                if math.isnan(landmark_loss):
+                    print('break, landmark loss is nan', landmark_loss)
+                    print('landmark pred val ', landmark_pred_val)
+                    # nan_count = sess.run([count_nan_op], feed_dict={landmark_pred: landmark_pred_val})
+                    print('no of nan in landmark_pred_val', count_nan(landmark_pred_val))
+                    print('no of nan in landmark_target', count_nan(landmark_batch_array))
+                    # print('other metrics ', square_error_val, k_index_val, valid_inds_val)
+                    break
+                    
                 total_loss = radio_cls_loss*cls_loss + radio_bbox_loss*bbox_loss + radio_landmark_loss*landmark_loss + L2_loss
                 # landmark loss: %4f,
                 print("%s : Step: %d/%d, accuracy: %3f, cls loss: %4f, bbox loss: %4f,Landmark loss :%4f,L2 loss: %4f, Total Loss: %4f ,lr:%f " % (

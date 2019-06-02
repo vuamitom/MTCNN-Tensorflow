@@ -3,7 +3,7 @@ from train_models.mtcnn_model import R_Net
 from train_models.train import train
 
 
-def train_RNet(base_dir, prefix, log_dir, model_checkpoint, end_epoch, display, lr, optimizer='momentum'):
+def train_RNet(base_dir, prefix, log_dir, model_checkpoint, end_epoch, display, lr, optimizer='adam'):
     """
     train PNet
     :param dataset_dir: tfrecord path

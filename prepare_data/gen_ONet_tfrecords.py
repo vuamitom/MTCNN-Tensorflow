@@ -6,7 +6,7 @@ import time
 
 import tensorflow as tf
 
-from prepare_data.tfrecord_utils import _process_image_withoutcoder, _convert_to_example_simple
+from prepare_data.tfrecord_utils import sample_to_tfrecord
 
 
 def _add_to_tfrecord(filename, image_example, tfrecord_writer):
@@ -31,7 +31,7 @@ def _get_output_filename(output_dir, name, net):
     #st = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     #return '%s/%s_%s_%s.tfrecord' % (output_dir, name, net, st)
     #return '%s/train_PNet_landmark.tfrecord' % (output_dir)
-    return '%s/neg_landmark.tfrecord' % (output_dir)
+    return '%s/%s_landmark.tfrecord' % (output_dir, name)
     
 
 def run(dataset_dir, net, output_dir, name='MTCNN', shuffling=False):
@@ -48,7 +48,7 @@ def run(dataset_dir, net, output_dir, name='MTCNN', shuffling=False):
         print('Dataset files already exist. Exiting without re-creating them.')
         return
     # GET Dataset, and shuffling.
-    dataset = get_dataset(dataset_dir, net=net)
+    dataset = get_dataset(dataset_dir, name, net=net)
     # filenames = dataset['filename']
     if shuffling:
         tf_filename = tf_filename + '_shuffle'
@@ -63,17 +63,22 @@ def run(dataset_dir, net, output_dir, name='MTCNN', shuffling=False):
                 sys.stdout.write('\r>> Converting image %d/%d' % (i + 1, len(dataset)))
                 sys.stdout.flush()
             filename = image_example['filename']
-            _add_to_tfrecord(filename, image_example, tfrecord_writer)
+            example = sample_to_tfrecord(filename, image_example)
+            tfrecord_writer.write(example.SerializeToString())
     # Finally, write the labels file:
     # labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
     # dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
     print('\nFinished converting the MTCNN dataset!')
 
 
-def get_dataset(dir, net='PNet'):
+def get_dataset(dir, name, net='PNet'):
     #item = 'imglists/PNet/train_%s_raw.txt' % net
     #item = 'imglists/PNet/train_%s_landmark.txt' % net
-    item = '%s/neg_%s.txt' % (net,net)
+    if name == 'landmark':
+        item = '48/landmark_48_aug.txt'
+    else:
+        item = 'no_LM48/%s_%s.txt' % (name,net)
+    no_landmarks = 68
     #print(item)
     dataset_dir = os.path.join(dir, item)
     imagelist = open(dataset_dir, 'r')
@@ -89,32 +94,15 @@ def get_dataset(dir, net='PNet'):
         bbox['ymin'] = 0
         bbox['xmax'] = 0
         bbox['ymax'] = 0
-        bbox['xlefteye'] = 0
-        bbox['ylefteye'] = 0
-        bbox['xrighteye'] = 0
-        bbox['yrighteye'] = 0
-        bbox['xnose'] = 0
-        bbox['ynose'] = 0
-        bbox['xleftmouth'] = 0
-        bbox['yleftmouth'] = 0
-        bbox['xrightmouth'] = 0
-        bbox['yrightmouth'] = 0        
+        bbox['landmarks'] = [0.0 for x in range(0, no_landmarks*2)]
+
         if len(info) == 6:
             bbox['xmin'] = float(info[2])
             bbox['ymin'] = float(info[3])
             bbox['xmax'] = float(info[4])
             bbox['ymax'] = float(info[5])
-        if len(info) == 12:
-            bbox['xlefteye'] = float(info[2])
-            bbox['ylefteye'] = float(info[3])
-            bbox['xrighteye'] = float(info[4])
-            bbox['yrighteye'] = float(info[5])
-            bbox['xnose'] = float(info[6])
-            bbox['ynose'] = float(info[7])
-            bbox['xleftmouth'] = float(info[8])
-            bbox['yleftmouth'] = float(info[9])
-            bbox['xrightmouth'] = float(info[10])
-            bbox['yrightmouth'] = float(info[11])
+        if len(info) == 138:
+            bbox['landmarks'] = [float(x) for x in info[2:(no_landmarks * 2 + 2)]]
             
         data_example['bbox'] = bbox
         dataset.append(data_example)
@@ -123,7 +111,10 @@ def get_dataset(dir, net='PNet'):
 
 
 if __name__ == '__main__':
-    dir = '../../DATA/'
+    dir = '/home/tamvm/Projects/MTCNN-Tensorflow/data/'
     net = '48'
-    output_directory = '../../DATA/imglists/ONet'
-    run(dir, net, output_directory, shuffling=True)
+    name = 'landmark'
+    output_directory = '/home/tamvm/Projects/MTCNN-Tensorflow/data/imglists/ONet'
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+    run(dir, net, output_directory, name=name, shuffling=True)

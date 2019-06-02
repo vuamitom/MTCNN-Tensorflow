@@ -204,12 +204,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Test mtcnn',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--test_mode', dest='test_mode', help='test net type, can be pnet, rnet or onet',
-                        default='PNet', type=str)
+                        default='RNet', type=str)
     parser.add_argument('--prefix', dest='prefix', help='prefix of model name', nargs="+",
-                        default=['../data/MTCNN68_model/PNet_landmark/PNet', '../data/MTCNN68_model/RNet_landmark/RNet', '../data/MTCNN68_model/ONet_landmark/ONet'],
+                        default=['../data/MTCNN68_model/PNet_landmark/PNet', '../data/MTCNN68_model/RNet_No_Landmark/RNet', '../data/MTCNN68_model/ONet_landmark/ONet'],
                         type=str)
     parser.add_argument('--epoch', dest='epoch', help='epoch number of model to load', nargs="+",
-                        default=[433599, 14, 16], type=int)
+                        default=[433599, 666999, 16], type=int)
     parser.add_argument('--batch_size', dest='batch_size', help='list of batch size used in prediction', nargs="+",
                         default=[2048, 256, 16], type=int)
     parser.add_argument('--thresh', dest='thresh', help='list of thresh for pnet, rnet, onet', nargs="+",
@@ -228,7 +228,7 @@ def parse_args():
 
 if __name__ == '__main__':
 
-    net = 'RNet'
+    net = 'ONet'
 
     if net == "RNet":
         # epoch = 14
@@ -252,7 +252,7 @@ if __name__ == '__main__':
 
     print('Called with argument:')
     print(args)
-    if False:
+    if True:
         t_net(args.prefix,#model param's file
               args.epoch, #final epoches
               args.batch_size, #test batch_size 

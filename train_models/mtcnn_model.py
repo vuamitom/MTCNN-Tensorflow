@@ -131,7 +131,8 @@ def landmark_ohem(landmark_pred,landmark_target,label):
     square_error = square_error*valid_inds
     _, k_index = tf.nn.top_k(square_error, k=keep_num)
     square_error = tf.gather(square_error, k_index)
-    return tf.reduce_mean(square_error)
+    ll = tf.reduce_mean(square_error)
+    return tf.where(tf.is_nan(ll), tf.zeros_like(ll), ll)
     
 def cal_accuracy(cls_prob,label):
     '''
@@ -215,14 +216,7 @@ def P_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
         landmark_pred = slim.conv2d(net,num_outputs=(no_landmarks *2),kernel_size=[1,1],stride=1,scope='conv4_3',activation_fn=None)
         _activation_summary(landmark_pred)
         print (landmark_pred.get_shape())
-
-
         # add projectors for visualization
-
-
-
-
-
         #cls_prob_original = conv4_1 
         #bbox_pred_original = bbox_pred
         if training:
@@ -240,7 +234,7 @@ def P_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
 
             accuracy = cal_accuracy(cls_prob,label)
             L2_loss = tf.add_n(slim.losses.get_regularization_losses())
-            return cls_loss,bbox_loss,landmark_loss,L2_loss,accuracy
+            return cls_loss,bbox_loss,landmark_loss,L2_loss,accuracy, landmark_pred
         #test
         else:
             #when test,batch_size = 1
@@ -291,7 +285,7 @@ def R_Net(inputs,label=None,bbox_target=None,landmark_target=None,training=True)
             accuracy = cal_accuracy(cls_prob,label)
             landmark_loss = landmark_ohem(landmark_pred,landmark_target,label)
             L2_loss = tf.add_n(slim.losses.get_regularization_losses())
-            return cls_loss,bbox_loss,landmark_loss,L2_loss,accuracy
+            return cls_loss,bbox_loss,landmark_loss,L2_loss,accuracy, landmark_pred
         else:
             return cls_prob,bbox_pred,landmark_pred
     

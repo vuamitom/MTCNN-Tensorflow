@@ -83,7 +83,7 @@ def get_dataset(datadir, name, net='PNet'):
     #item = 'imglists/PNet/train_%s_landmark.txt' % net
     no_landmarks = 68
     if name == 'landmark':
-        item = 'imglists_noLM/RNet/train_RNet_landmark.txt'
+        item = '24/landmark_24_aug.txt'
     else:
         item = '%s/%s_24.txt' % (net, name)
 
