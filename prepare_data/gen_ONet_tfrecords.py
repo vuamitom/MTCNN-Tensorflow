@@ -113,7 +113,7 @@ def get_dataset(dir, name, net='PNet'):
 if __name__ == '__main__':
     dir = '/home/tamvm/Projects/MTCNN-Tensorflow/data/'
     net = '48'
-    name = 'landmark'
+    name = 'part'
     output_directory = '/home/tamvm/Projects/MTCNN-Tensorflow/data/imglists/ONet'
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
